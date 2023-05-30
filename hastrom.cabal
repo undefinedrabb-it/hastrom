@@ -1,0 +1,199 @@
+cabal-version:      3.4
+name:               hastrom
+version:            0.1.0.0
+
+-- A short (one-line) description of the package.
+-- synopsis:
+
+-- A longer description of the package.
+-- description:
+
+-- A URL where users can report bugs.
+-- bug-reports:
+
+-- The license under which the package is released.
+-- license:
+author:             undefinedrabbit
+maintainer:         41783233+undefinedrabb-it@users.noreply.github.com
+
+common warnings
+    ghc-options: -Wall  -O2 -flate-specialise -fspecialise-aggressively
+
+
+-- A copyright notice.
+-- copyright:
+-- category:
+extra-source-files: CHANGELOG.md
+
+-- library
+--     exposed-modules:  MyLib
+
+--     -- Modules included in this library but not exported.
+--     -- other-modules:
+
+--     -- LANGUAGE extensions used by modules in this package.
+--     -- other-extensions:
+--     build-depends:    base ^>=4.16.4.0
+--     hs-source-dirs:   src
+--     default-language: Haskell2010
+
+executable hastrom
+    main-is:          Main.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    default-extensions:
+        DataKinds,
+        FlexibleContexts,
+        GADTs,
+        LambdaCase,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeOperators,
+        TypeFamilies,
+        OverloadedStrings,
+        OverloadedRecordDot,
+        NamedFieldPuns,
+        KindSignatures,
+        InstanceSigs,
+        DuplicateRecordFields,
+        DeriveGeneric,
+        DeriveAnyClass,
+        BlockArguments,
+        TemplateHaskell,
+    build-depends:
+        base ^>=4.16.4.0,
+        text ^>= 2.0.2,
+        bytestring ^>= 0.11.3.1,
+        aeson ^>=2.1.2.1,
+        containers ^>= 0.6.7,
+        polysemy ^>= 1.8.0.0,
+        -- hastrom
+
+    hs-source-dirs:   app
+    default-language: GHC2021
+
+
+executable hastromEcho
+    main-is:          Echo.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    default-extensions:
+        DataKinds,
+        FlexibleContexts,
+        GADTs,
+        LambdaCase,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeOperators,
+        TypeFamilies,
+        OverloadedStrings,
+        OverloadedRecordDot,
+        NamedFieldPuns,
+        KindSignatures,
+        InstanceSigs,
+        DuplicateRecordFields,
+        DeriveGeneric,
+        DeriveAnyClass,
+        BlockArguments,
+        TemplateHaskell,
+    build-depends:
+        base ^>=4.16.4.0,
+        text ^>= 2.0.2,
+        bytestring ^>= 0.11.3.1,
+        aeson ^>=2.1.2.1,
+        containers ^>= 0.6.7,
+        polysemy ^>= 1.8.0.0,
+        -- hastrom
+
+    hs-source-dirs:   app
+    default-language: GHC2021
+
+executable hastromPolysemyBrodcast
+    main-is:          Polysemy_Brodcast.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    default-extensions:
+        DataKinds,
+        FlexibleContexts,
+        GADTs,
+        LambdaCase,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeOperators,
+        TypeFamilies,
+        OverloadedStrings,
+        OverloadedRecordDot,
+        NamedFieldPuns,
+        KindSignatures,
+        InstanceSigs,
+        DuplicateRecordFields,
+        DeriveGeneric,
+        DeriveAnyClass,
+        BlockArguments,
+        TemplateHaskell,
+    build-depends:
+        base ^>=4.16.4.0,
+        text ^>= 2.0.2,
+        bytestring ^>= 0.11.3.1,
+        aeson ^>=2.1.2.1,
+        containers ^>= 0.6.7,
+        polysemy ^>= 1.8.0.0,
+        -- hastrom
+
+    hs-source-dirs:   app
+    default-language: GHC2021
+
+executable hastromPolysemyEcho
+    main-is:          Polysemy_Echo.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    default-extensions:
+        DataKinds,
+        FlexibleContexts,
+        GADTs,
+        LambdaCase,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeOperators,
+        TypeFamilies,
+        OverloadedStrings,
+        OverloadedRecordDot,
+        NamedFieldPuns,
+        KindSignatures,
+        InstanceSigs,
+        DuplicateRecordFields,
+        DeriveGeneric,
+        DeriveAnyClass,
+        BlockArguments,
+        TemplateHaskell,
+    build-depends:
+        base ^>=4.16.4.0,
+        text ^>= 2.0.2,
+        bytestring ^>= 0.11.3.1,
+        aeson ^>=2.1.2.1,
+        containers ^>= 0.6.7,
+        polysemy ^>= 1.8.0.0,
+        -- hastrom
+
+    hs-source-dirs:   app
+    default-language: GHC2021

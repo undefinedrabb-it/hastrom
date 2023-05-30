@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "app/Main.hs"
+      component: "hastrom:exe:hastrom"
+
+    - path: "app/Echo.hs"
+      component: "hastrom:exe:hastromEcho"
+
+    - path: "app/Polysemy_Brodcast.hs"
+      component: "hastrom:exe:hastromPolysemyBrodcast"
+
+    - path: "app/Polysemy_Echo.hs"
+      component: "hastrom:exe:hastromPolysemyEcho"
