@@ -87,10 +87,10 @@ instance ToJSON (MsgBody Res) where
         [ toTypePair "echo_ok",
           "echo" .= echo
         ]
-      payloadToPairs (TopologyOk) =
+      payloadToPairs TopologyOk =
         [ toTypePair "topology_ok"
         ]
-      payloadToPairs (InitOk) =
+      payloadToPairs InitOk =
         [ toTypePair "init_ok"
         ]
       payloadToPairs (Error {code, text}) =

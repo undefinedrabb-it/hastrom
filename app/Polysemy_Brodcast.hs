@@ -1,5 +1,9 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Main where
 
+import Control.Monad (when)
 import Data.Aeson
   ( FromJSON (parseJSON),
     Object,
@@ -19,14 +23,33 @@ import Data.Aeson
 import Data.Aeson.Types qualified as AesonT
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy.Char8 qualified as BSL8
+import Data.Foldable (traverse_)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Polysemy
 import Polysemy.Input
 import Polysemy.Output
 import System.IO (hFlush, hPrint, hPutStrLn, stderr, stdin, stdout)
+
+newtype TraceBody = TraceBody {_type :: T.Text} deriving (Show)
+
+instance FromJSON (MsgBody TraceBody) where
+  parseJSON = withObject "Payload" $ \obj ->
+    do
+      msg_id <- obj .:? "msg_id"
+      in_reply_to <- obj .:? "in_reply_to"
+      _type <- obj .: "type" :: AesonT.Parser T.Text
+      pure $ MsgBody {msg_id, in_reply_to, payload = TraceBody {_type}}
+
+instance ToJSON (MsgBody TraceBody) where
+  toJSON (MsgBody {msg_id, in_reply_to, payload = TraceBody {_type}}) =
+    object
+      [ "msg_id" .= msg_id,
+        "in_reply_to" .= in_reply_to,
+        "type" .= _type
+      ]
 
 data Req
   = Init
@@ -38,7 +61,7 @@ data Req
       }
   | Broadcast {message :: Int}
   | Read
-  | Topology {topology :: Maybe (Map.Map T.Text[T.Text])}
+  | Topology {topology :: Maybe (Map.Map T.Text [T.Text])}
   deriving (Generic, Show)
 
 data Res
@@ -56,7 +79,7 @@ data Res
   deriving (Generic, Show)
 
 data MsgBody p = MsgBody
-  { msg_id :: Int,
+  { msg_id :: Maybe Int,
     in_reply_to :: Maybe Int,
     payload :: p
   }
@@ -72,6 +95,10 @@ data Msg p = Msg
 instance ToJSON (Msg Res)
 
 instance ToJSON (Msg Req)
+
+instance ToJSON (Msg TraceBody)
+
+instance FromJSON (Msg TraceBody)
 
 instance FromJSON (Msg Res)
 
@@ -142,7 +169,7 @@ instance ToJSON (MsgBody Req) where
 instance FromJSON (MsgBody Res) where
   parseJSON = withObject "Payload" $ \obj ->
     do
-      msg_id <- obj .: "msg_id"
+      msg_id <- obj .:? "msg_id"
       in_reply_to <- obj .:? "in_reply_to"
       _type <- obj .: "type" :: AesonT.Parser T.Text
 
@@ -162,7 +189,7 @@ instance FromJSON (MsgBody Res) where
 instance FromJSON (MsgBody Req) where
   parseJSON = withObject "Payload" $ \obj ->
     do
-      msg_id <- obj .: "msg_id"
+      msg_id <- obj .:? "msg_id"
       in_reply_to <- obj .:? "in_reply_to"
       _type <- obj .: "type" :: AesonT.Parser T.Text
 
@@ -182,7 +209,7 @@ data State = State
   { node_id :: T.Text,
     message_id :: Int,
     messages :: [Int],
-    topology :: Map.Map T.Text T.Text
+    topology :: Map.Map T.Text [T.Text]
   }
   deriving (Show)
 
@@ -210,6 +237,7 @@ teletypeToIO = interpret \case
 
 data Event
   = IncMsg
+  | Gossip {about :: Int, gotFrom :: T.Text}
   | AddMsg {msg :: Int}
   | SetNodeId {id :: T.Text}
 
@@ -221,24 +249,34 @@ data Node m a where
 
 makeSem ''Node
 
-pl :: Member Node r => State -> Req -> Sem r (State, Res)
-pl state (Init {node_id, node_ids}) = do
+pl :: Members '[Node, Logger] r => State -> Msg Req -> Sem r (State, Maybe Res)
+pl state (Msg {body = MsgBody {payload = (Init {node_id, node_ids})}}) = do
   state' <- dispatchEvent (SetNodeId node_id) state
-  pure (state', InitOk)
-pl state (Echo {echo}) = pure (state, EchoOk {echo})
-pl state (Broadcast {message}) = do
-  state' <- dispatchEvent (AddMsg message) state
-  pure (state', BroadcastOk)
-pl state Read = do
-  pure (state, ReadOk {messages = state.messages})
-pl state (Topology {topology}) = pure (state, TopologyOk)
+  pure (state', Just InitOk)
+pl state (Msg {body = MsgBody {payload = (Echo {echo})}}) = do
+  pure (state, Just EchoOk {echo})
+pl state (Msg {src = src, body = MsgBody {msg_id, payload = (Broadcast {message})}}) = do
+  state' <-
+    if message `notElem` state.messages
+      then do
+        state' <- dispatchEvent (AddMsg message) state
+        dispatchEvent (Gossip {about = message, gotFrom = src}) state'
+      else pure state
+  if isNothing msg_id
+    then pure (state', Nothing)
+    else pure (state', Just BroadcastOk)
+pl state (Msg {body = MsgBody {payload = Read}}) = do
+  pure (state, Just ReadOk {messages = state.messages})
+pl state (Msg {body = MsgBody {payload = (Topology {topology})}}) = do
+  pure (state {topology = fromMaybe Map.empty topology}, Just TopologyOk)
 
 errorMsg =
-  (Msg {src = "0", dest = "0", body = MsgBody {msg_id = 0, in_reply_to = Nothing, payload = Error {code = 0, text = "error"}}})
+  (Msg {src = "0", dest = "0", body = MsgBody {msg_id = Just 0, in_reply_to = Nothing, payload = Error {code = 0, text = "error"}}})
 
 nodeToIO :: Member Teletype r => Member (Embed IO) r => Sem (Node ': r) a -> Sem r a
 nodeToIO = interpret \case
-  SendMsg s -> do writeTTY . BSL8.unpack $ encode $ fromMaybe errorMsg s
+  SendMsg s -> do
+    send $ fromMaybe errorMsg s
   NewNode -> do
     pure $ State {node_id = "", message_id = 0, topology = Map.empty, messages = []}
   DispatchEvent SetNodeId {id} state -> do
@@ -250,35 +288,56 @@ nodeToIO = interpret \case
   DispatchEvent AddMsg {msg} state -> do
     let state' = state {messages = msg : state.messages} :: State
     pure state'
+  DispatchEvent Gossip {about, gotFrom} state -> do
+    let neighbours = Map.findWithDefault [] state.node_id state.topology |> filter (/= gotFrom)
+    traverse_ (send . msg) neighbours
+    pure state
+    where
+      msg s = Just $ Msg {src = state.node_id, dest = s, body = MsgBody {msg_id = Nothing, in_reply_to = Nothing, payload = Broadcast {message = about}}}
+  where
+    send s = do
+      writeTTY . BSL8.unpack $ encode s
 
-lpp :: Member Node r => State -> Maybe (Msg Req) -> Sem r State
+(|>) = flip ($)
+
+lpp :: Members '[Node, Logger] r => State -> Maybe (Msg Req) -> Sem r State
 lpp state Nothing = do
   sendMsg Nothing
   pure state
 lpp state (Just msg) = do
   state <- dispatchEvent IncMsg state
-  (state', payload) <- pl state msg.body.payload
-  sendMsg $ Just $ ms msg state' payload
-  pure state'
-  where
-    ms msg state' payload =
-      Msg
-        { src = state'.node_id,
-          dest = msg.src,
-          body =
-            MsgBody
-              { msg_id = state'.message_id,
-                in_reply_to = Just msg.body.msg_id,
-                payload
-              }
-        }
+  (state', payload) <- pl state msg
+  case payload of
+    Just payload -> do
+      sendMsg $ Just $ msgCtor msg state' payload
+      pure state'
+    Nothing -> pure state'
+
+msgCtor :: Msg Req -> State -> Res -> Msg Res
+msgCtor msg state' payload =
+  Msg
+    { src = state'.node_id,
+      dest = msg.src,
+      body =
+        MsgBody
+          { msg_id = Just state'.message_id,
+            in_reply_to = msg.body.msg_id,
+            payload
+          }
+    }
 
 lp :: Members '[Logger, Teletype, Node] r => State -> Sem r ()
 lp state = do
   s <- BSL8.pack <$> readTTY
   logInfo s
   let req = decode s :: Maybe (Msg Req)
-  state' <- lpp state req
+  state' <-
+    if isNothing req
+      then do
+        logInfo $ "Invalid request " <> s
+        pure state
+      else do
+        lpp state req
   lp state'
 
 main :: IO ()
